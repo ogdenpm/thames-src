@@ -108,8 +108,10 @@ void getDriveMapping()
 
 void usage() {
     printf(
-        "usage: thames [-m] [-i] [-o] [-u] [-MF file] [-ME ext] [-T] isisprog isisargs...\n"
+        "usage: thames [-v | -V] | [-m] [-i] [-o] [-u] [-MF file] [-ME ext] [-T] isisprog isisargs...\n"
         "Options are:\n"
+        "    -v         show basic verison information\n"
+        "    -V         show extended version information\n"
         "    -m         map os path names to ISIS drives, isisargs updated to use ISIS drives\n"
         "    -i         ingnore crc errors in load file\n"
         "    -o         treat overlap errors as warnings\n"

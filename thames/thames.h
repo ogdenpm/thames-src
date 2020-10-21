@@ -21,7 +21,16 @@
  ***************************************************************************/
 
 #include <sys/stat.h>
+#ifndef _MSC_VER
 #include "config.h"
+#else
+#define HAVE_SYS_TYPES_H
+#define HAVE_SYS_STAT_H
+#define HAVE_LIMITS_H
+#define HAVE_CONIO_H
+#define HAVE_IO_
+#endif
+
 /* System include files */
 
 #include <stdio.h>
@@ -101,7 +110,7 @@ typedef unsigned short mode_t;
 #define kbhit   _kbhit
 #define getch   _getch
 #define access  _access
-#define mkdir   _mkdir
+#define mkdir(path, mode)   _mkdir(path)
 #define strcasecmp  _stricmp    // use more common name
 #define PATH_MAX    _MAX_PATH   // MSC uses different name
 #endif
@@ -112,7 +121,9 @@ typedef unsigned short mode_t;
 #define PATHCMP strcmp
 #endif
 
-
+#ifndef _MAX_DIR
+#define _MAX_DIR PATH_MAX
+#endif
 
 
 

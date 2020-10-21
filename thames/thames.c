@@ -21,6 +21,8 @@
  ***************************************************************************/
 
 #include "thames.h"
+#include <stdbool.h>
+void showVersion(FILE *fp, bool full);
 
 /* Global variables */
 
@@ -192,6 +194,11 @@ int main(int ac, char **av)
 #endif
     progname = argv[0];
 
+    if (argc == 2 && strcasecmp(argv[1], "-v") == 0) {
+        showVersion(stdout, argv[1][1] == 'V');
+        exit(0);
+    }
+
     str = getenv("ISIS_TRACE");
     if (str) trace = atoi(str);
     if (trace > 3) fptrace = stdout;
@@ -217,6 +224,7 @@ int main(int ac, char **av)
     }
 
     /* [Mark Ogden] parse options returning index of isis program name */
+
     isisProgArg = parseOptions(argc, argv);
 
     if (isisProgArg >= argc)

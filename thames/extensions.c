@@ -54,7 +54,7 @@ void mkpath(char *depFile) {
             return;
         *s = 0;
         if (access(dir, 0) < 0)
-            mkdir(dir);
+            mkdir(dir, 0777);
         *s++ = *depFile++;
     }
 }
