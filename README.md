@@ -1,21 +1,16 @@
-# tool-src
+# thameSrc
 
-This repository contains the source code to a number of utilities I use to help with my reverse engineering efforts, however they are are useful for general build activities.
+This repository contains a modified version of John Elliott's thames partial ISIS II emulator. The original source can be found at [thames: An ISIS-II Emulator (v0.1.1) (seasip.info)](http://www.seasip.info/Unix/Thames/thames.html)
 
-See the doc directory for information on each of the utilities.
+The differences, along with John's original help file are in the doc directory in markdown, pdf and html formats.
 
-Originally the code was distributed as part of my [Intel80Tools](https://github.com/ogdenpm/intel80tools) repository, however I have refactored into its own repository as a cleaner option, as the number of tools increases. Prebuilt Windows 32bit binaries of these tools are still distributed as part of the [Intel80Tools](https://github.com/ogdenpm/intel80tools) repository. 
+Note this version now builds using cmake or the provided visual studio solution file rather than using autotools. Additionally I have added my automated build versioning model based on git, see the repository [ogdenpm/versionTools (github.com)](https://github.com/ogdenpm/versionTools) for details.
 
-Visual studio solution files are provided for all the tools,  but most should compile under linux/unix with little or no modification, although disIntelLib uses C#.
-
-Note if you get a warning message when building  files, it may be because you are using an older or possibly newer version than I have set the project to. Visual Studio provides simple options to retarget to any version you have.
-Also the first build of disIntelLIb may generate an error as it cannot find the auto generated files. Future attempts should however work.
-
-There are also a couple of Windows command files from my [versionTools](https://github.com/ogdenpm/versionTools) repository. Of these version.cmd is the main one that creates the version numbers and perl replacement can be found in the [versionTools](https://github.com/ogdenpm/versionTools) repository. The other should be replaced with your own installation scripts.
+A caveat on the version tools is that if you are building under *nix then you will need to make sure that the repository is also checked out with *nix line endings, otherwise the line ending differences are identified as uncommitted changes.
 
 ------
 
 ```
-Updated by Mark Ogden 12-Oct-2020
+Updated by Mark Ogden 21-Oct-2020
 ```
 
