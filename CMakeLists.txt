@@ -5,27 +5,27 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(thames LANGUAGES C)
 
 add_executable(thames
-    cmdline.c
-    errcheck.c
-    extensions.c
-    isis.c
-    isisfile.c
-    isisload.c
-    thames.c
-    utils.c
-    z80.c
-    cbops.h
-    cmdline.h
-    config.h
-    edops.h
-    errcheck.h
-    extensions.h
-    isis.h
-    isisfile.h
-    isisload.h
-    thames.h
-    z80.h
-    z80ops.h
+    thames/cmdline.c
+    thames/errcheck.c
+    thames/extensions.c
+    thames/isis.c
+    thames/isisfile.c
+    thames/isisload.c
+    thames/thames.c
+    thames/utils.c
+    thames/z80.c
+    thames/cbops.h
+    thames/cmdline.h
+    thames/config.h
+    thames/edops.h
+    thames/errcheck.h
+    thames/extensions.h
+    thames/isis.h
+    thames/isisfile.h
+    thames/isisload.h
+    thames/thames.h
+    thames/z80.h
+    thames/z80ops.h
     )
 
 target_compile_options(thames
