@@ -17,7 +17,7 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "Enhanced ISIS II emulator"
             VALUE "FileVersion", GIT_VERSION
-            VALUE "LegalCopyright", "(C) 2012  John Elliot / " GIT_YEAR "  Mark Ogden"
+            VALUE "LegalCopyright", "(C) 2012  John Elliott / " GIT_YEAR "  Mark Ogden"
             VALUE "OriginalFilename", GIT_APPNAME ".exe"
             VALUE "ProductName", GIT_APPNAME
             VALUE "ProductVersion", GIT_VERSION

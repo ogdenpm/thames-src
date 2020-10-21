@@ -12,7 +12,7 @@ void showVersion(FILE *fp, bool full) {
 #ifdef _DEBUG
     fputs(" {debug}", fp);
 #endif
-    fputs("  (C)2012 John Elliot - extensions (C)" GIT_YEAR " Mark Ogden\n", fp);
+    fputs("  (C)2012 John Elliott - extensions (C)" GIT_YEAR " Mark Ogden\n", fp);
     if (full) {
         fprintf(fp, "%d bit target - Git: %s [%.10s]", (int)sizeof(void *) * CHAR_BIT, GIT_SHA1, GIT_CTIME);
 #if GIT_BUILDTYPE == 2

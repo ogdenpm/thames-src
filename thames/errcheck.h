@@ -1,7 +1,7 @@
 /***************************************************************************
 *                                                                         *
 *    THAMES: Partial ISIS-II emulator                                     *
-*    Copyright (C) 2011 John Elliott <jce@seasip.demon.co.uk>             *
+*    Copyright (C) 2011 John Elliott <seasip.webmaster@gmail.com>         *
 *                                                                         *
 *    Extensions to detect ISIS application errors and return error code   *
 *    Copyright (C) 2017 Mark Ogden <mark.pm.ogden@btinternet.com>         *
