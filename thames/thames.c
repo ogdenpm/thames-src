@@ -21,6 +21,7 @@
  ***************************************************************************/
 
 #include "thames.h"
+#include <io.h>
 #include <stdbool.h>
 void showVersion(FILE *fp, bool full);
 
