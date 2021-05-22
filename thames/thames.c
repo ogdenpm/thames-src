@@ -278,7 +278,8 @@ int main(int ac, char **av)
         printf("Command line is:\n");
         dumpbuffer(0, (byte *)conin->buffer->data, (int)strlen(conin->buffer->data));
     }
-
+    RAM[4] = 0xff;      // for asxref that relies on top of ram being in word at location 4
+    RAM[5] = 0xf7;
 /* Set up MDS800 jumpblock -- all entries are CALL F980 */
     for (n = 0; n < 42; n++)
     {

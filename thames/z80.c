@@ -18,6 +18,7 @@
 
 #include<stdio.h>
 #include "thames.h"
+#include <stdbool.h>
 
 #ifdef _WIN32
 #pragma warning(disable: 4244)		// suppress conversion warnings
