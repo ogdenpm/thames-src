@@ -38,6 +38,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <stdint.h>
+#include <stdbool.h>
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -70,8 +72,14 @@
 #define PATH_MAX 256	/* For want of anything better */
 #endif
 
-typedef unsigned char byte;	/* Must be exactly 8 bits */
-typedef unsigned short word;	/* Must be exactly 16 bits */
+
+#if UINT8_MAX != 0xff || UINT16_MAX != 0xffff
+#error Type lengths incorrect; edit typedefs and recompile
+#endif
+
+typedef uint8_t byte;	/* Must be exactly 8 bits */
+typedef uint16_t word;	/* Must be exactly 16 bits */
+
 
 /* Prototypes */
 
@@ -86,6 +94,7 @@ void capitals(char *s); /* Make a string uppercase */
 void trim(char *s);	/* Remove trailing whitespace from a string */
 char *getExt(char *fname);
 char *getName(char *path);
+void *safeMalloc(size_t size);
 
 /* Global variables */
 
@@ -124,6 +133,7 @@ typedef unsigned short mode_t;
 #ifndef _MAX_DIR
 #define _MAX_DIR PATH_MAX
 #endif
+
 
 
 

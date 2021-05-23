@@ -37,14 +37,13 @@ int oOption;	// ingore overlap errors
 int iOption;	// ignore load errors
 int tOption;    // map tmp files to windows/unix tmp files to allow parallel compiles
 char *depFile;  // used to create dependency file
-char* outputExt = ".obj";   /* default output extent */
+char *outputExt = ".obj";   /* default output extent */
 
 
 
 /* Given a device name (eg, :F0:) look up the appropriate environment
 * variable (eg: ISIS_F0) */
-const char *xlt_device(const char *dev)
-{
+const char *xlt_device(const char *dev) {
     char buf[20];
 
     if (strlen(dev) != 4 || dev[0] != ':' || dev[3] != ':')
@@ -58,8 +57,7 @@ const char *xlt_device(const char *dev)
     return getenv(buf);
 }
 
-int isis_drive_exists(int n)
-{
+int isis_drive_exists(int n) {
     if (n < 0 || n > 9) return 0;	/* Bad drive number */
 
     return disks[n].path != NULL;		// use cached disk info
@@ -68,31 +66,30 @@ int isis_drive_exists(int n)
 
 
 // dump the drive mapping for F0-F9
-static void showDriveMapping()
-{
+static void showDriveMapping() {
     for (int i = 0; i < 10; i++)
         if (disks[i].path)
             printf("ISIS_F%d=%s [%s]\n", i, disks[i].path, disks[i].dynamic ? "dynamic" : "static");
 }
 
 
-void getDriveMapping()
-{
+void getDriveMapping() {
     char envpath[] = { "ISIS_F?" };
     char *s, *t;
     for (int i = 0; i < 10; i++) {		// process F0-F9
         envpath[6] = i + '0';
         s = getenv(envpath);
         if (s) {						// exists
-            disks[i].path = (char *)malloc(strlen(s) + 2);	// room for null and possibly trailing /
+            disks[i].path = (char *)safeMalloc(strlen(s) + 2);	// room for null and possibly trailing /
             strcpy(disks[i].path, s);
 #ifdef _WIN32
-            for (s = strchr(disks[i].path, '\\'); s; s = strchr(s, '\\')) *s = '/';		// map \ to /
+            for (s = strchr(disks[i].path, '\\'); s; s = strchr(s, '\\'))   // map \ to /
+                *s = '/';
 #endif
             t = strchr(disks[i].path, 0) - 1;	// add trailing / if needed
             if (*t != '/')
                 strcat(t, "/");
-        
+
         } else if (i == 0) {					// F0 treated specially, defaults to ./ if not specified
             disks[i].path = "./";
             disks[i].dynamic = 1;
@@ -126,8 +123,7 @@ void usage() {
 
 /* parse command line options */
 
-int parseOptions(int argc, char *argv[])
-{
+int parseOptions(int argc, char *argv[]) {
     int isisProgArg;
 
     for (isisProgArg = 1; isisProgArg < argc && *argv[isisProgArg] == '-'; isisProgArg++) {
@@ -148,8 +144,7 @@ int parseOptions(int argc, char *argv[])
         else if (strcmp(argv[isisProgArg], "-h") == 0) {
             usage();
             exit(0);
-        }
-        else
+        } else
             printf("Unknown option %s\n", argv[isisProgArg]);
     }
     return isisProgArg;
@@ -174,8 +169,7 @@ ISIS :Fx: drive name
 Note path must be terminated with / (or : for Windows) */
 
 
-void path2Isis(char *path)
-{
+void path2Isis(char *path) {
     int i;
     for (i = 0; i < 10; i++)
         if (disks[i].path && PATHCMP(disks[i].path, path) == 0)
@@ -207,8 +201,7 @@ void path2Isis(char *path)
 /* parse the string -> inArgs and return the parsed argument converted to ISIS format
 inArgs is updated to point to the rest of the input string */
 
-static char *unixArg2Isis(char **inArgs)
-{
+static char *unixArg2Isis(char **inArgs) {
     static char arg[PATH_MAX];		// returned value of parsed Arg
     char *s = *inArgs;
     char *t = arg;
@@ -224,15 +217,13 @@ static char *unixArg2Isis(char **inArgs)
         else if (*s == '(') {			// start of option arg
             *t++ = *s++;
             inParen = 1;
-        }
-        else if (*s == '\'') {	// copy string
+        } else if (*s == '\'') {	// copy string
             while (*t++ = *s++)
                 if (*s == '\'') {
                     *t++ = *s++;	// '' is handled by starting new string
                     break;
                 }
-        }
-        else if (strlen(s) >= 4 && s[0] == ':' && s[3] == ':') {		// ISIS device + possibly file name
+        } else if (strlen(s) >= 4 && s[0] == ':' && s[3] == ':') {		// ISIS device + possibly file name
             path = t;
             while (isalnum(*s) || *s == ':' || *s == '.')				// copy the name
                 *t++ = *s++;
@@ -246,8 +237,7 @@ static char *unixArg2Isis(char **inArgs)
                 if (disks[path[2] - '0'].dynamic)					// already auto allocated
                     fprintf(stderr, "WARNING ISIS_F%c not explicitly defined for file %s - using %s\n", path[2], path, disks[path[2] - '0'].path);
             }
-        }
-        else {		// standard file name or an option name
+        } else {		// standard file name or an option name
             filename = path = t;	// start of filename path or option
             while (*s && *s != ' ' && *s != ',' && *s != '(' && *s != '&' && *s != ')') {
 #ifdef _WIN32
@@ -274,17 +264,15 @@ static char *unixArg2Isis(char **inArgs)
         if (s[0] == '&' && s[1] == '&') {					// && treated as simple new line
             *t++ = '\n';
             s += 2;
-        }
-        else
+        } else
             *t++ = *s++;
-    *t = 0;
-    *inArgs = s;
-    return arg;
+        *t = 0;
+        *inArgs = s;
+        return arg;
 }
 
 
-void unix2Isis()
-{
+void unix2Isis() {
     char *inArgs = conin->buffer->data;
     char *arg, *sline;
     LINE_BUFFER *newLineBuffer;
@@ -295,7 +283,7 @@ void unix2Isis()
     if (!mOption)
         return;
 
-    sline = newCmdLine = (char *)malloc(MAXBUFSIZE + 1);		//  big command line buffer
+    sline = newCmdLine = (char *)safeMalloc(MAXBUFSIZE + 1);		//  big command line buffer
 
     *sline = 0;
     while (*inArgs) {
@@ -313,8 +301,7 @@ void unix2Isis()
         if (*arg == '\n' || *arg == '&') {		// && or &
             strcat(sline, "\r\n");
             sline = strchr(sline, 0);
-        }
-        else {
+        } else {
             if (strlen(sline) + strlen(arg) > ISIS_LINE_MAX - 3) {	// need room for &\r\n
                 strcat(sline, "&\r\n");
                 sline = strchr(sline, 0);

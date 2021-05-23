@@ -56,12 +56,12 @@
 #define inc(var) /* 8-bit increment */ ( var++,\
                                          f=(f&3)|((!(var&15))<<4)|\
                                            partable[var]\
-									   )
+                                       )
 
 #define dec(var) /* 8-bit decrement */ ( f=(f&3)|((!(var&15))<<4),\
                                          --var,\
                                          f|=partable[var]\
-									   )
+                                       )
 #endif
 
 #define swap(x,y) {unsigned char t=x; x=y; y=t;}
@@ -117,7 +117,7 @@
 #define addhl(hi,lo) /* 16-bit add */ do {\
                       unsigned short t;\
                       l=t=l+(lo);\
-					  t >>= 8;\
+                      t >>= 8;\
                       h=t+=h+(hi);\
                       f=(f&0xfe)|(t>>8);\
                    } while(0)
@@ -132,7 +132,7 @@
                       unsigned char z=(x);\
                       y=(a-z-(c))&0x1ff;\
                       f=(y>>8)|(((a&0x0f)<(z&0x0f)+(c))<<4)|2|\
-						partable[a=y];\
+                        partable[a=y];\
                    } while(0)
 #define cpa(x) /* 8-bit compare */ do{unsigned short y;\
                       unsigned char z=(x);\
@@ -141,8 +141,8 @@
                         partable[y & 0xff]|2;\
                    } while(0)
 #define anda(x) /* logical and */ do{\
-					  f=(((a|x)&8)<<1)|2;\
-					  f|=partable[a &= (x)];\
+                      f=(((a|x)&8)<<1)|2;\
+                      f|=partable[a &= (x)];\
                    } while(0)
 #define xora(x) /* logical xor */ f=partable[a ^= (x)]|2;
 #define ora(x) /* logical or */ f=partable[a |= (x)]|2;
@@ -400,7 +400,7 @@ instr(39,4);
       unsigned char incr=0, carry=cy;
       if((f&0x10) || (a&0x0f)>9) incr=6;
 #ifdef Z80
-	  if((f&1) || (a>>4)>9) incr|=0x60;
+      if((f&1) || (a>>4)>9) incr|=0x60;
 
       if(f&2)suba(incr,0);
       else {
@@ -409,9 +409,9 @@ instr(39,4);
       }
       f=((f|carry)&0xfb)|parity(a);
 #else
-	  if (cy || a >= 0x9A) incr |= 0x60;
-	  adda(incr, 0);
-	  f |= carry;
+      if (cy || a >= 0x9A) incr |= 0x60;
+      adda(incr, 0);
+      f |= carry;
 #endif
 
    }
@@ -789,8 +789,8 @@ HLinstr(0x75,7,8);
 endinstr;
 
 instr(0x76,4);
-	printf("HALT at %04X\n", pc - 1);
-	thames_exit(1);
+    printf("HALT at %04X\n", pc - 1);
+    thames_exit(1);
 endinstr;
 
 HLinstr(0x77,7,8);
@@ -1329,19 +1329,19 @@ instr(0xed,4);
 #include"edops.h"
 #else
  if (fetch(pc) == 0xfe) {
-	 pc++;
-		/* Create copies of the registers here so we can take their addresses
-		* and not lose register optimisation in the rest of the CPU code */
-		byte xa, xb, xc, xd, xe, xf, xxh, xxl;
-		word xp, xx, xy, xs;
+     pc++;
+        /* Create copies of the registers here so we can take their addresses
+        * and not lose register optimisation in the rest of the CPU code */
+        byte xa, xb, xc, xd, xe, xf, xxh, xxl;
+        word xp, xx, xy, xs;
 
-		xa = a; xb = b; xc = c; xd = d; xe = e; xf = f; xxh = h; xxl = l;
-		xp = pc; xx = ix; xy = iy; xs = sp;
+        xa = a; xb = b; xc = c; xd = d; xe = e; xf = f; xxh = h; xxl = l;
+        xp = pc; xx = ix; xy = iy; xs = sp;
 
-		ed_fe(&xa, &xb, &xc, &xd, &xe, &xf, &xxh, &xxl, &xp, &xx, &xy, &xs);
+        ed_fe(&xa, &xb, &xc, &xd, &xe, &xf, &xxh, &xxl, &xp, &xx, &xy, &xs);
 
-		a = xa; b = xb; c = xc; d = xd; e = xe; f = xf; h = xxh; l = xxl;
-		pc = xp; ix = xx; iy = xy; sp = xs;
+        a = xa; b = xb; c = xc; d = xd; e = xe; f = xf; h = xxh; l = xxl;
+        pc = xp; ix = xx; iy = xy; sp = xs;
 }
 #endif
 

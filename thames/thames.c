@@ -23,6 +23,9 @@
 #include "thames.h"
 #include <io.h>
 #include <stdbool.h>
+
+
+
 void showVersion(FILE *fp, bool full);
 
 /* Global variables */
@@ -210,12 +213,7 @@ int main(int ac, char **av)
     str = strrchr(progname, '/');
     if (str) progname = str + 1;
 
-    if (sizeof(int) > 8 || sizeof(byte) != 1 || sizeof(word) != 2)
-    {
-        fprintf(stderr, "%s: type lengths incorrect; edit typedefs "
-            "and recompile.\n", progname);
-        thames_exit(1);
-    }
+
 
     if (isis_open_stdio())
     {

@@ -23,25 +23,21 @@
 #include "thames.h"
 
 /* Remove trailing spaces */
-void trim(char *s)
-{
-    for (char *p = strchr(s, '\0'); p >= s && isspace(*p) ; p--)
+void trim(char *s) {
+    for (char *p = strchr(s, '\0'); p >= s && isspace(*p); p--)
         *p = 0;
 }
 
 
 
-void capitals(char *s)
-{
-	while (*s)
-	{
-		if (islower(*s)) *s = toupper(*s);
-		++s;
-	}
+void capitals(char *s) {
+    while (*s)     {
+        if (islower(*s)) *s = toupper(*s);
+        ++s;
+    }
 }
 
-char *getExt(char *path)
-{
+char *getExt(char *path) {
     char *s = getName(path);
 
     return (s = strrchr(path, '.')) ? s : strchr(path, 0);
@@ -56,3 +52,11 @@ char *getName(char *path) {
     return path;
 }
 
+void *safeMalloc(size_t size) {
+    void *p = malloc(size);
+    if (!p) {
+        fprintf(stderr, "out of memory\n");
+        exit(1);
+    }
+    return p;
+}

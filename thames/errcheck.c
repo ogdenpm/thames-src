@@ -24,12 +24,13 @@
 ***************************************************************************/
 
 #include "thames.h"
+#include <stdbool.h>
 
 #define MAXERRSTR	72
 
 static char lineBuffer[MAXERRSTR + 1];
 static int col;
-int appError;
+bool appError = false;
 
 int appType;
 enum apps {
@@ -38,7 +39,7 @@ enum apps {
 };
 
 
-static int match(char *line);
+static bool match(char *line);
 
 static struct {
     char *signature;
@@ -51,7 +52,7 @@ static struct {
     {"ISIS-II OBJECT LINKER", LINK80},
     {"ISIS-II LIBRARIAN", LIB80},
     {"ISIS-II IXREF", IXREF},
-	{"ISIS-II BASIC-80", BASIC},
+    {"ISIS-II BASIC-80", BASIC},
     {NULL, UNKNOWN}
 };
 
@@ -125,8 +126,7 @@ static struct {
 };
 
 
-void errCheck(char *buffer, int count)
-{
+void errCheck(char *buffer, int count) {
 
     for (int i = 0; !appError && i < count; i++) {
         if (col == 0 && (isspace(buffer[i]) || buffer[i] == '*'))	// ignore leading space and prompts
@@ -139,15 +139,13 @@ void errCheck(char *buffer, int count)
                 printf("\n***%s\n", lineBuffer);
 #endif
             col = 0;
-        }
-        else if (buffer[i] != '\n' && col < MAXERRSTR)
+        }         else if (buffer[i] != '\n' && col < MAXERRSTR)
             lineBuffer[col++] = buffer[i];
     }
 }
 
 
-static int stdErrChk(char *line)
-{
+static int stdErrChk(char *line) {
     while (*line == ' ')
         line++;
 
@@ -165,34 +163,33 @@ enum {
 };
 
 
-static int match(char *line)
-{
+static bool match(char *line) {
     int where = BOTH;		// where 0-> start of line or after ,:-, 1->start only, 2-> after ,:-
 
     if (!*line)
-        return 0;
+        return false;
 
     switch (appType) {
     case UNKNOWN:
         for (int i = 0; signatures[i].signature; i++)
             if (strncmp(line, signatures[i].signature, strlen(signatures[i].signature)) == 0) {
                 appType = signatures[i].appType;
-                return 0;
+                return false;
             }
         break;
     case PLM80:
         if (strncmp(line, "PL/M-80 COMPILATION COMPLETE.", 29) == 0)
-            return !!(strncmp(line + 34, " 0 PROGRAM ERROR", 16));
+            return strncmp(line + 34, " 0 PROGRAM ERROR", 16) != 0;
         else
-            return !!strncmp(line, "COMPILATION TERMINATED", 22);	// PLM is well behaved so only need to look for these 2 error options
+            return strncmp(line, "COMPILATION TERMINATED", 22) != 0;	// PLM is well behaved so only need to look for these 2 error options
         break;
     case ASM80:
     case ASM48:
-		if (strncmp(line, "ASSEMBLY COMPLETE,", 18) == 0) {
-			for (line = line + 18; *line == ' '; line++)
-				;
-			return !!strncmp(line, "NO ERROR", 8);
-		}
+        if (strncmp(line, "ASSEMBLY COMPLETE,", 18) == 0) {
+            for (line = line + 18; *line == ' '; line++)
+                ;
+            return strncmp(line, "NO ERROR", 8) != 0;
+        }
         where = START;
         break;
     case IXREF:
@@ -211,14 +208,14 @@ static int match(char *line)
             return !oOption;
         where = BOTH;
         break;
-	case BASIC:	// don't error check basic
-		return 0;
+    case BASIC:	// don't error check basic
+        return false;
     }
     if (where != AFTER && stdErrChk(line))
-        return 1;
-	if (where != START)
-		while (*++line && *(line += strcspn(line, ",:-")))
-			if (stdErrChk(line + 1))
-				return 1;
-    return 0;
+        return true;
+    if (where != START)
+        while (*++line && *(line += strcspn(line, ",:-")))
+            if (stdErrChk(line + 1))
+                return true;
+    return false;
 }

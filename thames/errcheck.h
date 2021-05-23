@@ -24,5 +24,6 @@
 ***************************************************************************/
 
 #pragma once
-extern int appError;
+#include <stdbool.h>
+extern bool appError;
 void errCheck(char *buffer, int count);

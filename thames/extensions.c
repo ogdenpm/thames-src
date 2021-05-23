@@ -27,7 +27,7 @@ void addFileRef(char *fname, int flags) {
             return;
         }
     }
-    p->next = (flist_t *)malloc(sizeof(flist_t));
+    p->next = (flist_t *)safeMalloc(sizeof(flist_t));
     p = p->next;
     p->next = NULL;
     p->fname = strdup(fname);
@@ -55,7 +55,10 @@ void mkpath(char *depFile) {
             return;
         *s = 0;
         if (access(dir, 0) < 0)
-            mkdir(dir, 0777);
+            if (mkdir(dir, 0777) != 0 && errno != EEXIST) {
+                fprintf(stderr, "cannot create directory %s\n", dir);
+                exit(1);
+            }
         *s++ = *depFile++;
     }
 }
@@ -76,7 +79,7 @@ void genDependencies(char *depFile) {
     }
     for (flist_t *p = &headFList; p->next;) {
         p = p->next;
-        char* ext = getExt(p->fname);
+        char *ext = getExt(p->fname);
         if (*ext == '.' && *outputExt != '.')   /* be flexible in case user has missed off . in the -ME option */
             ext++;
         if ((p->flags & 2) && strcasecmp(ext, outputExt) == 0)
@@ -99,8 +102,7 @@ void genDependencies(char *depFile) {
 // currently all files ending .tmp and the asm86.nam and asm86.ent files are mapped
 // a dynamic table is built up to allow for close/reopen of tmp files
 // currently deleted files are not removed but not found to be a problem
-void mapTmpFile(char *path)
-{
+void mapTmpFile(char *path) {
     int i;
 
     char *fname = getName(path);     // past any directory separators
