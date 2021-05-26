@@ -35,6 +35,9 @@ target_compile_options(thames
     "-D_CRT_SECURE_NO_WARNINGS"
     )
 
+target_include_directories(thames PUBLIC
+	$<BUILD_INTERFACE: ${CMAKE_CURRENT_BINARY_DIR}/Generated>)
+
 add_custom_target(
 getversion
 COMMAND perl ${thames_SOURCE_DIR}/Scripts/version.pl ${CMAKE_CURRENT_BINARY_DIR}/Generated/ ${CMAKE_CURRENT_BINARY_DIR}/Generated/version.h

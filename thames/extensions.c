@@ -1,5 +1,4 @@
 #include "thames.h"
-#include <io.h>
 
 #define MAXTMP  40
 struct {

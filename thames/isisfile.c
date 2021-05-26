@@ -21,7 +21,6 @@
  ***************************************************************************/
 
 #include "thames.h"
-#include <io.h>
 
 static int isis_close_file(ISIS_FILE *self);
 

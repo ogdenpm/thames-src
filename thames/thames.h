@@ -28,7 +28,7 @@
 #define HAVE_SYS_STAT_H
 #define HAVE_LIMITS_H
 #define HAVE_CONIO_H
-#define HAVE_IO_
+#define HAVE_IO_H
 #endif
 
 /* System include files */

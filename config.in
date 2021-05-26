@@ -3,5 +3,6 @@
 #cmakedefine HAVE_FCNTL_H
 #cmakedefine HAVE_UNISTD_H
 #cmakedefine HAVE_LIMITS_H
+#cmakedefine HAVE_ERRNO_H
 #cmakedefine HAVE_CONIO_H
 #cmakedefine HAVE_IO_H
