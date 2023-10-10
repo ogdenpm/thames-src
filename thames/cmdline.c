@@ -44,15 +44,12 @@ char *outputExt = ".obj";   /* default output extent */
 /* Given a device name (eg, :F0:) look up the appropriate environment
 * variable (eg: ISIS_F0) */
 const char *xlt_device(const char *dev) {
-    char buf[20];
+    char buf[] = { "ISIS_XX" };
 
-    if (strlen(dev) != 4 || dev[0] != ':' || dev[3] != ':')
-        return NULL;
-
-    if (dev[1] == 'F' || dev[1] == 'f' && isdigit(dev[2]))	// for F0-F9 returned cached disk path
+    if (dev[1] == 'F' && isdigit(dev[2]))	// for F0-F9 returned cached disk path
         return disks[dev[2] - '0'].path;
-
-    sprintf(buf, "ISIS_%-2.2s", dev + 1);
+    buf[5] = dev[1];
+    buf[6] = dev[2];
 
     return getenv(buf);
 }
@@ -69,16 +66,17 @@ int isis_drive_exists(int n) {
 static void showDriveMapping() {
     for (int i = 0; i < 10; i++)
         if (disks[i].path)
-            printf("ISIS_F%d=%s [%s]\n", i, disks[i].path, disks[i].dynamic ? "dynamic" : "static");
+            printf(":F%d:=%s [%s]\n", i, disks[i].path, disks[i].dynamic ? "dynamic" : "static");
 }
 
 
 void getDriveMapping() {
-    char envpath[] = { "ISIS_F?" };
+    char envpath[] = { "ISIS_Fx" };
     char *s, *t;
     for (int i = 0; i < 10; i++) {		// process F0-F9
         envpath[6] = i + '0';
         s = getenv(envpath);
+//        printf("%s -> %s\n", envpath, s ? s : "null");
         if (s) {						// exists
             disks[i].path = (char *)safeMalloc(strlen(s) + 2);	// room for null and possibly trailing /
             strcpy(disks[i].path, s);
@@ -105,7 +103,7 @@ void getDriveMapping() {
 
 void usage() {
     printf(
-        "usage: thames [-v | -V] | [-m] [-i] [-o] [-u] [-MF file] [-ME ext] [-T] isisprog isisargs...\n"
+        "usage: thames [-v | -V | -h] | [-m] [-i] [-o] [-u] [-MF file] [-ME ext] [-T] isisprog isisargs...\n"
         "Options are:\n"
         "    -v         show basic verison information\n"
         "    -V         show extended version information\n"
@@ -116,7 +114,7 @@ void usage() {
         "    -MF file   create make dependency file\n"
         "    -ME ext    treat files with given ext as targets for dependency file - default .obj\n"
         "    -T         map application tmp files to os tmp files to allow parallel compiles\n"
-        "Environment variables ISIS_Fx (where x is 0..9) map isis drive to os path\n"
+        "Environment variables ISIS_XX (where XX is the ISIS device) map a device to an os path\n"
         "Using -m option dynamically creates the mapping F0 -> . unless  ISIS_F0 specified\n"
         "Note thames attempts to detect application errors and return an appropriate exit code\n");
 }

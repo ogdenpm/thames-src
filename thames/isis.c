@@ -21,7 +21,7 @@
  ***************************************************************************/
 
 #include "thames.h"
-#define ISIS_PATH_MAX	15
+
 void get_isis_filename(int addr, char *buf) {
     int n;
 
@@ -29,7 +29,7 @@ void get_isis_filename(int addr, char *buf) {
     while (isspace(RAM[addr]))
         ++addr;
 
-    for (n = 0; n < ISIS_PATH_MAX - 1; n++, addr++) 	{
+    for (n = 0; n < ISIS_PATH_MAX; n++, addr++) 	{
         int c = RAM[addr];
         if (!isalnum(c) && c != '.' && c != ':')
             break;
@@ -199,7 +199,7 @@ void isis_wrapwrite(int param) {
 
 void isis_wrapseek(int param) {
     int handle = paramword(param, 0);
-    int mode = paramword(param, 1);
+    int access = paramword(param, 1);
     byte *block = &RAM[paramword(param, 2)];
     byte *bbyte = &RAM[paramword(param, 3)];
     byte *status = &RAM[paramword(param, 4)];
@@ -212,7 +212,7 @@ void isis_wrapseek(int param) {
     nbytei = bbyte[0] + 256 * bbyte[1];
 /* [Mark Ogden] nbytei can go above 127 */
     offseti = offseto = nbytei + (nblocki % 32768) * 128;
-    err = isis_seek(handle, mode, &offseto);
+    err = isis_seek(handle, access, &offseto);
 
     nbyteo = offseto % 128;
     nblocko = offseto / 128;
@@ -221,7 +221,7 @@ void isis_wrapseek(int param) {
                "block=%04x [%d -> %d] "
                "byte=%04x [%d -> %d] offset=%ld -> %ld "
                "result=%04x\n",
-               handle, isis_filename(handle), mode,
+               handle, isis_filename(handle), access,
                paramword(param, 2), nblocki, nblocko,
                paramword(param, 3), nbytei, nbyteo,
                offseti, offseto, err);

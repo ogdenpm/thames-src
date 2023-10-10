@@ -22,16 +22,12 @@
 
 #include "thames.h"
 
-static int isis_close_file(ISIS_FILE *self);
+static int isis_close_file(unsigned short h);
 
 
-static ISIS_FILE *root = NULL;
+ISIS_FILE* handles[MAXHANDLE];        // max number of handles supported
 
-
-ISIS_FILE *conin = NULL, *conout = NULL, *devnull = NULL;
-
-
-
+static char const* isis_clean_name(char const* name);
 
 /* [Mark Ogden]
     const char *xlt_device(const char *dev);
@@ -46,90 +42,103 @@ ISIS_FILE *conin = NULL, *conout = NULL, *devnull = NULL;
  * 1: It is a character device eg :CI: :BB:
  * 2: It is a block device     eg :F0: :F2:
  */
-int isis_isdev(const char *isisname) {
-/* All devices have 4-character names */
-    if (strlen(isisname) != 4) return 0;
+int isis_isdev(char const* name) {
+    char const* isisdev = isis_clean_name(name);
 
-/* All devices have names of the form :??: */
-    if (isisname[0] != ':' || isisname[3] != ':') return 0;
+    /* All devices have 4-character names */
+    if (strlen(isisdev) != 4)
+        return 0;
 
-/* Block devices of the form :F<digit>: */
-    if (isdigit(isisname[2]) &&
-        (isisname[1] == 'F' || isisname[1] == 'f')) return 2;
+    /* All devices have names of the form :??: */
+    if (isisdev[0] != ':' || isisdev[3] != ':')
+        return 0;
 
-/* Everything else is a character device */
+    /* Block devices of the form :F<digit>: */
+    if (isisdev[1] == 'F' && isdigit(isisdev[2]))
+        return 2;
+
+    /* Everything else is a character device */
     return 1;
 }
 
 /* Find out which drive a file is on.
  * Returns 0-9, or -1 for a character device */
-int isis_getdrive(const char *isisname) {
-    if (strlen(isisname) >= 4 &&
-        isisname[0] == ':' &&
-        isisname[3] == ':') {
-        if ((isisname[1] == 'F' || isisname[1] == 'f') &&
-            isdigit(isisname[2])) {
+int isis_getdrive(const char* name) {
+    char const* isisname = isis_clean_name(name);
+
+    if (isisname[0] == ':') {
+        if (isisname[1] == 'F' && isdigit(isisname[2]) && isisname[3] == ':')
             return isisname[2] - '0';
-        }
-        return -1;
+        else
+            return -1;
     }
     return 0;	/* If no device spec, assume :F0: */
 }
 
-/* [Mark Ogden] - Caution. Under unix if a path name is used the isis file name part
- * is not mapped to lower case.
- * This is only likely to be an issue with the isis program name.
- * With the -m option the file is mapped to an isis name so under unix ensure that the
- * isis file name is in lower case
+
+/* clean up passed in isis name to remove leading spaces, upper case and terminate with '\0' */
+// returns a statically allocated clean name
+static char const* isis_clean_name(char const* name) {
+    static char isisName[ISIS_PATH_MAX + 1];
+    int i;
+    while (*name && isspace(*name))
+        name++;
+    for (i = 0; i < ISIS_PATH_MAX; i++)
+        if (isalnum(*name) || *name == '.' || *name == ':')
+            isisName[i] = toupper(name[i]);
+        else
+            break;
+    isisName[i] = '\0';
+    return isisName;
+
+}
+
+
+/* [Mark Ogden] - For consistent handling the isis name/ext are forced to lower case
+* The path names and device path names from environment variables are NOT mapped
+* Caution is needed with POSIX systems with mixed case filenames.
+*
 */
 
-int isis_name2unix(const char *isisname, char *unixname) {
-    char destname[PATH_MAX + 11];	// might have a / name & extent appended before testing length
-    char isisdev[5];
-    const char *src;
-    char *dest;
-    int havedev;
+int isis_name2unix(const char* name, char* unixname) {
+     char isisdev[5];
+    const char* src;
+    char* dest;
+    int isisNameOffset;
+    int osNameOffset = 0;
+    char isisname[ISIS_PATH_MAX + 1];
+    strcpy(isisname, isis_clean_name(name));        // make a safe local copy
 
-    /* If filename starts with a . or a /, treat it as a UNIX filename */
-#ifdef _WIN32	// [Mark Ogden] added support for dos filenames
-    if (isisname[0] == '/' || isisname[0] == '.' || (isalpha(isisname[0]) && isisname[1] == ':') || isisname[0] == '\\')
-#else
-    if (isisname[0] == '/' || isisname[0] == '.')
-#endif
-    {
-        if (strlen(isisname) >= PATH_MAX) 		// [Mark Ogden] check file name is not too long
-            return ERROR_BADFILENAME;
-        strcpy(unixname, isisname);
-        return ERROR_SUCCESS;
-    }
 
-    /* It's an ISIS filename. If it doesn't start with a device
+    /* If the name doesn't start with a device
      * specifier, assume :F0: */
-    if (strlen(isisname) < 4 || isisname[0] != ':' || isisname[3] != ':') {
+    if (isisname[0] != ':') {
         strcpy(isisdev, ":F0:");
-        havedev = 0;
-    } else {
-        sprintf(isisdev, "%-4.4s", isisname);
-        havedev = 1;
+        isisNameOffset = 0;
     }
-    capitals(isisdev);
-/* The bit bucket (:BB:) is always defined, and is /dev/null */
-    if (!strcmp(isisdev, ":BB:")) {
+    else if (strlen(isisname) < 4 || isisname[3] != ':')
+        return ERROR_BADFILENAME;
+    else {
+        sprintf(isisdev, "%-4.4s", isisname);
+        isisNameOffset = 4;
+    }
+
+    /* The bit bucket (:BB:) is always defined, and is host null devvice*/
+    if (strcmp(isisdev, ":BB:") == 0) {
 #ifdef _WIN32		// [Mark Ogden] added dos nul device support
         strcpy(unixname, "nul");
 #else
         strcpy(unixname, "/dev/null");
 #endif
         return ERROR_SUCCESS;
-
     }
-/* Check for other mapped devices */
-    if (isis_isdev(isisname) == 1)	/* Character device */
+    /* Check for other mapped devices */
+    if (isis_isdev(isisdev) == 1)	/* Character device */
     {
-        src = xlt_device(isisname);
+        src = xlt_device(isisdev);
         if (!src) {
             fprintf(stderr, "No UNIX mapping for ISIS "
-                    "character device %s\n", isisdev);
+                "character device %s\n", isisdev);
             return ERROR_BADDEVICE;
         }
         if (strlen(src) >= PATH_MAX)	// catch file name too long
@@ -137,43 +146,48 @@ int isis_name2unix(const char *isisname, char *unixname) {
         strcpy(unixname, src);
         return ERROR_SUCCESS;
     }
-/* isisdev had just better be a valid block device by now */
-    if (isis_isdev(isisdev) != 2) return ERROR_BADFILENAME;
+    /* isisdev had just better be a valid block device by now */
+    if (isis_isdev(isisdev) != 2)
+        return ERROR_BADFILENAME;
+
+    if (tOption) {
+        char* s = mapTmpFile(isisname + isisNameOffset);
+        if (s && strlen(s) < PATH_MAX) {
+            strcpy(unixname, s);
+            return ERROR_SUCCESS;
+        }
+    }
 
     src = xlt_device(isisdev);
     if (!src) {
         fprintf(stderr, "No UNIX mapping for ISIS "
-                "block device %s\n", isisdev);
+            "block device %s\n", isisdev);
         return ERROR_BADFILENAME;
     }
-
-    if (strlen(src) >= PATH_MAX)	// catch file name too long
+    // if src contains a final / or \ this may limit name size by 1 char
+    if (strlen(src) + strlen(isisname + isisNameOffset) + 1 >= PATH_MAX) 	// catch file name too long
         return ERROR_BADFILENAME;
 
-    memset(destname, 0, sizeof(destname));  // make sure 0 at end of any string created below
 
-    strcpy(destname, src);
-#ifdef _WIN32		// [Mark Ogden] map \ to / and handle x: fpr dps
-    for (char *s = strchr(destname, '\\'); s; s = strchr(s, '\\'))	*s = '/';
-    if (destname[2] || destname[1] == ':' || !isalpha(destname[0]))	// x: only shouldn't assume root
+    strcpy(unixname, src);
+
+#ifdef _WIN32		// [Mark Ogden] map \ to / and handle x: for dos
+    for (char* s = strchr(unixname, '\\'); s; s = strchr(s + 1, '\\'))
+        *s = '/';
+    if (unixname[1] == ':')
+        osNameOffset = 2;
 #endif
-    {
-        /* Append a path separator if there isn't one */
-        if (destname[strlen(destname) - 1] != '/')
-            strcat(destname, "/");
-    }
-    dest = destname + strlen(destname);
-    src = &isisname[havedev ? 4 : 0];
 
-    while (*src && !isspace(*src))		// [Mark Ogden] assumes filename part has max 10 chars i.e name56.ext
-    {
-        *dest++ = tolower(*src++);
+    /* Append a path separator if there isn't one */
+    dest = strchr(unixname, '\0');
+    if (dest > unixname + osNameOffset && dest[-1] != '/') {
+        strcpy(dest, "/");
+        dest++;
     }
-    if (tOption)
-        mapTmpFile(destname);
-    if (strlen(destname) >= PATH_MAX)	// [Mark Ogden] check file name path is still ok
-        return ERROR_BADFILENAME;
-    strcpy(unixname, destname);
+    src = &isisname[isisNameOffset];
+    while (*dest++ = tolower(*src++))
+        ;
+
     return ERROR_SUCCESS;
 }
 
@@ -181,174 +195,138 @@ int isis_name2unix(const char *isisname, char *unixname) {
 
 
 /* Create a new ISIS file with a unique handle */
-static int new_isis_file(ISIS_FILE **pf) {
-    ISIS_FILE *result;
-    byte handle_used[256];
+static int new_isis_handle(ISIS_FILE** pf) {
     int handle;
 
-    memset(handle_used, 0, sizeof(handle_used));
-    /* Generate a new file handle that isn't in use. */
-    for (result = root; result != NULL; result = result->next) {
-        handle = result->handle;
-        if (handle >= 0 && handle < 256) handle_used[handle] = 1;
-    }
-    for (handle = 0; handle < 256; handle++) {
-        if (!handle_used[handle]) break;
-    }
-    if (handle > 255) {
+    for (handle = 2; handle < MAXHANDLE && handles[handle]; handle++)
+        ;
+    if (handle >= MAXHANDLE) {
         *pf = NULL;
-        return ERROR_NOHANDLES;	/* ISIS assumes a maximum of
-                     * 256 file handles */
+        return ERROR_NOHANDLES;	/* no free handles */
     }
-    result = malloc(sizeof(ISIS_FILE));
-    if (!result) {
+    if (!(handles[handle] = calloc(1, sizeof(ISIS_FILE)))) {
         *pf = NULL;
         return ERROR_NOMEM;
     }
-    /* Link this file into the chain */
-    memset(result, 0, sizeof(ISIS_FILE));
-    result->next = root;
-    result->handle = handle;
-    root = result;
-    *pf = result;
+    *pf = handles[handle];
+    handles[handle]->handle = handle;
     return ERROR_SUCCESS;
 }
 
 
 
-void delete_isis_file(ISIS_FILE *f) {
-    ISIS_FILE *other;
-    if (!f)
+void release_isis_handle(unsigned short h) {
+    if (h >= MAXHANDLE)
         return;
-
-    if (f->fp)
-        isis_close_file(f);
-    // [Mark Ogden] - bug fix don't delete :ci: or :co:
-    if (f == conin || f == conout)
-        return;
-    /* Remove entry f from the linked list, if it's present */
-
-    for (other = root; other != NULL; other = other->next)
-        if (other->next == f) {
-            other->next = f->next;
-        }
-    if (root == f)
-        root = f->next;
-    if (f->buffer)
-        delete_buffer(f->buffer);
-    free(f);
+    isis_close_file(h);
+    free(handles[h]->buffer);                // safe even if null
+    free(handles[h]);
+    handles[h] = NULL;
+    if (h < 2)                 // make sure CO/CI are always present
+        isis_open_stdio(h);
 }
 
-static int isis_close_file(ISIS_FILE *self) {
+static int isis_close_file(unsigned short h) {
+    ISIS_FILE* self = handles[h];
     if (!self->fp) return ERROR_SUCCESS;
 
-    /* These two stay open */
-    if (self == conin || self == conout) {
+    /* don't close stdin or stdout */
+    if (self->fp == stdout) {
         fflush(self->fp);
         return ERROR_SUCCESS;
     }
-    /* Don't actually close stdin / stdout / stderr */
-    if (self->fp == stdin || self->fp == stdout || self->fp == stderr) {
-        self->fp = NULL;
+    else if (self->fp == stdin)
         return ERROR_SUCCESS;
-    }
+
     fclose(self->fp);
     self->fp = NULL;
     return ERROR_SUCCESS;
 }
 
 
-LINE_BUFFER *new_buffer(int len) {
-    LINE_BUFFER *res = malloc(len + sizeof(LINE_BUFFER));
-
-    if (!res) return NULL;
-    memset(res, 0, len + sizeof(LINE_BUFFER));
-    return res;
+LINE_BUFFER* new_buffer(int len) {
+    return calloc(1, len + sizeof(LINE_BUFFER));
 }
 
 
-void delete_buffer(LINE_BUFFER *buf) {
-    free(buf);
-}
+int isis_open_stdio(int handle) {
 
+    if (handle < 0 || handle > 1)
+        return ERROR_BADDEVICE;
+    ISIS_FILE* isf = handles[handle];
 
-int isis_open_stdio(void) {
-    int err;
+    if (isf) {
+        if (isf->fp && isf->fp != (handle == ISISCO ? stdout : stdin))
+            fclose(isf->fp);
+        free(isf->buffer);      // safe even if NULL
+        free(isf);
+    }
+    isf = handles[handle] = calloc(1, sizeof(ISIS_FILE));
+    if (!isf)
+        return ERROR_NOMEM;
 
-    err = new_isis_file(&conout);
-    if (err) return err;
-
-    strcpy(conout->filename, ":CO:");
-    conout->fp = stdout;
-    conout->handle = 0;
-    conout->access = 2;
-    conout->echo = 0;
-
-    err = new_isis_file(&conin);
-    if (err) return err;
-
-    strcpy(conin->filename, ":CI:");
-    conin->fp = stdin;	/* [Mark Ogden] Should be stdin, not stdout */
-    conin->handle = 1;
-    conin->access = 1;
-    conin->echo = 0;
+    if (handle == ISISCO) {
+        strcpy(isf->filename, ":CO:");
+        isf->fp = stdout;
+        isf->access = 2;
+    }
+    else {
+        strcpy(isf->filename, ":CI:");
+        isf->fp = stdin;
+        conin->handle = 1;
+        conin->access = 1;
+    }
     return ERROR_SUCCESS;
 }
 
 
 /* Detect attempts to open/close/delete the console, which is already open */
-ISIS_FILE *isis_devspecial(const char *name) {
-    char filename[PATH_MAX + 1];
+ISIS_FILE* isis_check_console(const char* name) {
+    char const* isisname = isis_clean_name(name);
 
-    /* Skip leading spaces, if any */
-    while (isspace(*name)) ++name;
-
-    strncpy(filename, name, PATH_MAX);
-    filename[PATH_MAX] = 0;
-    trim(filename);
-    capitals(filename);
-
-    if (!strcmp(filename, ":CI:")) return conin;
-    if (!strcmp(filename, ":CO:")) return conout;
-
+    if (strcmp(isisname, ":CO:") == 0)
+        return conout;
+    if (strcmp(isisname, ":CI:") == 0)
+        return conin;
     return NULL;
 }
 
-
-int  isis_open(int *handle, const char *isisname, int access, int echo) {
-    ISIS_FILE *isf;
+int  isis_open(int* handle, const char* name, int fmode, int echo) {
+    ISIS_FILE* isf;
     char unixname[PATH_MAX + 1];
-    int err;
 
-/* Access modes:
+    /* Access modes:
     1	"r"
     2	"w"
     3	If file exists, "r+" else "w+"
 */
-    if (access < 1 || access > 3) return ERROR_BADACCESS;
-/* XXX Handle Echo.
-    If Echo is nonzero, the file is put in buffered mode and its low
-    byte is the handle of the file to which input should be echoed.
-    (So 0xFF00 -> file 0, :CO: )
-*/
+    if (fmode < 1 || fmode > 3) return ERROR_BADACCESS;
+    /* XXX Handle Echo.
+        If Echo is nonzero, the file is put in buffered mode and its low
+        byte is the handle of the file to which input should be echoed.
+        (So 0xFF00 -> file 0, :CO: )
+    */
+
 
     /* Check for attempts to open the console, which is always open */
-    isf = isis_devspecial(isisname);
-    if (isf) {
-        if (isf == conin && access != 1) return ERROR_BADACCESS;
-        if (isf == conout && access != 2) return ERROR_BADACCESS;
-        isf->access = access;
+    if ((isf = isis_check_console(name))) {
+        if (isf == conin && fmode != 1) return ERROR_BADACCESS;
+        if (isf == conout && fmode != 2) return ERROR_BADACCESS;
+        isf->access = fmode;
         isf->echo = echo;
-        *handle = isf->handle;
+        *handle = isf == conout ? ISISCO : ISISCI;
         return ERROR_SUCCESS;
     }
-    /* Not the console. We need a new file. */
-    err = new_isis_file(&isf);
-    if (err) return err;
-
-    strncpy(isf->filename, isisname, PATH_MAX);
-    isf->filename[PATH_MAX] = 0;
-    isf->access = access;
+    char const *isisname = isis_clean_name(name);
+    for (int i = 0; i < MAXHANDLE; i++) {
+        if (handles[i] && strcmp(handles[i]->filename, isisname) == 0)
+            return ERROR_ALREADYOPEN;
+    }
+    int err;
+    if ((err = new_isis_handle(&isf)))
+            return err;
+    strcpy(isf->filename, isis_clean_name(name));
+    isf->access = fmode;
     isf->echo = echo;
 
     if (isf->echo) {
@@ -359,13 +337,13 @@ int  isis_open(int *handle, const char *isisname, int access, int echo) {
         isf->buffer->pos = 1;
     }
 
-    err = isis_name2unix(isisname, unixname);
+    err = isis_name2unix(name, unixname);
     if (err) {
-        delete_isis_file(isf);
+        release_isis_handle(isf->handle);
         return err;
     }
-    addFileRef(unixname, access);
-    switch (access) {
+    addFileRef(unixname, fmode);
+    switch (fmode) {
     case 1: isf->fp = fopen(unixname, "rb");
         break;
     case 2: isf->fp = fopen(unixname, "wb");
@@ -379,7 +357,7 @@ int  isis_open(int *handle, const char *isisname, int access, int echo) {
     if (!isf->fp) {
         if (trace)
             fprintf(stderr, "Can't open '%s'\n", unixname);
-        delete_isis_file(isf);
+        release_isis_handle(isf->handle);
         return ERROR_FILENOTFOUND;
     }
     *handle = isf->handle;
@@ -389,36 +367,37 @@ int  isis_open(int *handle, const char *isisname, int access, int echo) {
 
 
 int isis_close(int handle) {
-    int err;
-    ISIS_FILE *f = find_handle(handle);
+    if (handle >= MAXHANDLE)
+        return ERROR_BADPARAM;
 
-    if (!f) return ERROR_NOTOPEN;
+    if (!handles[handle])
+        return ERROR_NOTOPEN;
 
-    err = isis_close_file(f);
-    delete_isis_file(f);
+    int err = isis_close_file(handle);
+    release_isis_handle(handle);
     return err;
 }
 
 
-int isis_delete(const char *isisname) {
-    ISIS_FILE *fd;
+int isis_delete(const char* name) {
     char realname[PATH_MAX];
     int err;
 
+
     /* If the filename refers to a device, it can't be deleted */
-    if (isis_isdev(isisname)) return ERROR_ISDEVICE;
+    if (isis_isdev(name)) return ERROR_ISDEVICE;
 
     /* This should never return true, because isis_isdev() ought to
      * have caught attempts to delete the console. But just in case... */
-    if (isis_devspecial(isisname)) return ERROR_ISDEVICE;
+    if (isis_check_console(name)) return ERROR_ISDEVICE;
 
-    err = isis_name2unix(isisname, realname);
+    err = isis_name2unix(name, realname);
     if (err) return err;
 
     /* Check for attempts to delete an open file. Unix is happy with this,
      * but ISIS is not. */
-    for (fd = root; fd != NULL; fd = fd->next) {
-        if (!strcmp(realname, fd->filename))
+    for (int i = 0; i < MAXHANDLE; i++) {
+        if (handles[i] && !strcmp(realname, handles[i]->filename))
             return ERROR_FILEINUSE;
     }
 
@@ -450,9 +429,9 @@ int isis_delete(const char *isisname) {
 
 
 
-int isis_read(int handle, byte *buffer, int count, int *actual) {
-    FILE *fp;
-    ISIS_FILE *fd;
+int isis_read(int handle, byte* buffer, int count, int* actual) {
+    FILE* fp;
+    ISIS_FILE* fd;
     int avail = 0;
     char input[ISIS_LINE_MAX + 1];
     int err = ERROR_SUCCESS;
@@ -483,7 +462,7 @@ int isis_read(int handle, byte *buffer, int count, int *actual) {
             if (input[0] != 0 && input[strlen(input) - 1] == '\r') {	// [Mark Ogden] non unix systems may include \r as well
                 input[strlen(input) - 1] = 0;
             }
-            delete_buffer(fd->buffer);
+            free(fd->buffer);
             fd->buffer = new_buffer(2 + (int)strlen(input));		// [Mark Ogden] note new_buffer allocates 1 additional byte
             strcpy(fd->buffer->data, input);
             strcat(fd->buffer->data, "\r\n");
@@ -496,14 +475,14 @@ int isis_read(int handle, byte *buffer, int count, int *actual) {
             if ((buffer[i] = fd->buffer->data[fd->buffer->pos++]) == '\n')
                 avail = i + 1;
         err = ERROR_SUCCESS;
-/* If there is an echo file set up, write to it */
+        /* If there is an echo file set up, write to it */
         if (fd->echo != 0)
             err = isis_write(fd->echo, buffer, avail);
 
         *actual = avail;									// [Mark Ogden] pos updated in copy loop above
         return err;
     }
-/* Unbuffered read */
+    /* Unbuffered read */
     fp = fd->fp;
 
     if (fp == stdout) fp = stdin;
@@ -514,14 +493,17 @@ int isis_read(int handle, byte *buffer, int count, int *actual) {
 }
 
 
-int isis_write(int handle, byte *buffer, int count) {
-    FILE *fp;
-    ISIS_FILE *fd;
+int isis_write(int handle, byte* buffer, int count) {
+    FILE* fp;
+    ISIS_FILE* fd;
     int done;
 
     fd = find_handle(handle);
-
     if (!fd) return ERROR_NOTOPEN;
+
+    if (strcmp(fd->filename, "PROMPT.LST") == 0)
+        if (count > 0 && !*buffer)
+            printf("oops\n");
 
     if (fd->access == 1) return ERROR_NOWRITE;
 
@@ -532,6 +514,7 @@ int isis_write(int handle, byte *buffer, int count) {
         errCheck(buffer, count);		// intercept to check if app error
 
     done = (int)fwrite(buffer, 1, count, fp);
+    fflush(fp);
     if (done < count) return ERROR_DISKFULL;
     return ERROR_SUCCESS;
 }
@@ -539,19 +522,17 @@ int isis_write(int handle, byte *buffer, int count) {
 
 
 
-int isis_seek(int handle, int mode, long *offset) {
-    ISIS_FILE *fd;
+int isis_seek(int handle, int seekMode, long* offset) {
+    ISIS_FILE* fd;
     long pos;
 
     fd = find_handle(handle);
-
     if (!fd) return ERROR_NOTOPEN;
 
     if (fd->access == 2) return ERROR_SEEKWRITE;
-    if (fd->fp == stdin || fd->fp == stdout || fd->fp == stderr) {
+    if (isatty(fileno(fd->fp)))
         return ERROR_CANTSEEKDEV;
-    }
-    switch (mode) {
+    switch (seekMode) {
     case 0:	 /* Get position */
         pos = ftell(fd->fp);
         /* Can't get current position */
@@ -564,8 +545,8 @@ int isis_seek(int handle, int mode, long *offset) {
         if (pos < 0) return ERROR_CANTSEEKDEV;
         if (fd->access == 2)  return ERROR_SEEKWRITE;
         if (pos - (*offset) < 0) {
-/* [Mark Ogden] Seeking off beginning is an error, but nevertheless
- * rewinds the file */
+            /* [Mark Ogden] Seeking off beginning is an error, but nevertheless
+             * rewinds the file */
             fseek(fd->fp, 0L, SEEK_SET);
             return ERROR_OFFBEGINNING;
         }
@@ -597,7 +578,7 @@ int isis_seek(int handle, int mode, long *offset) {
     return ERROR_SUCCESS;
 }
 
-int isis_rename(const char *oldname, const char *newname) {
+int isis_rename(const char* oldname, const char* newname) {
     char unixold[1 + PATH_MAX];
     char unixnew[1 + PATH_MAX];
     int err;
@@ -618,62 +599,68 @@ int isis_rename(const char *oldname, const char *newname) {
     return ERROR_PERMISSIONS;
 }
 
-int isis_console(const char *ciname, const char *coname) {
+int isis_console(const char* ciname, const char* coname) {
     char unixname[1 + PATH_MAX];
-    FILE *fp;
+    FILE* fp;
     int err;
 
-/* If filename is :CI: or :CO:, don't reassign */
-    if (isis_devspecial(ciname) == NULL) {
-        err = isis_name2unix(ciname, unixname);
-        if (err) return err;
-        fp = fopen(unixname, "rb");
-        if (!fp) return ERROR_FILENOTFOUND;
+    /* reset any existing connections */
+    isis_open_stdio(ISISCO);
+    isis_open_stdio(ISISCI);
 
-        if (conin->fp != stdin) fclose(conin->fp);
+    ISIS_FILE* isf;
+
+
+    if ((isf = isis_check_console(ciname)) != conin) {
+        if (isf == conout)
+            return ERROR_BADPARAM;
+        if ((err = isis_name2unix(ciname, unixname)))
+            return err;
+        if (!(fp = fopen(unixname, "rb")))
+            return ERROR_FILENOTFOUND;
         conin->fp = fp;
     }
-    if (isis_devspecial(coname) == NULL) {
-        err = isis_name2unix(coname, unixname);
-        if (err) return err;
-        fp = fopen(unixname, "wb");
-        if (!fp) return ERROR_DIRFULL;
 
-        if (conout->fp != stdout && conout->fp != stderr)
-            fclose(conout->fp);
+    if ((isf = isis_check_console(coname)) != conout) {
+        if (isf == conin)
+            return ERROR_BADPARAM;
+        if ((err = isis_name2unix(coname, unixname)))
+            return err;
+        if (!(fp = fopen(unixname, "wb")))
+            return ERROR_DIRFULL;
         conout->fp = fp;
     }
     return ERROR_SUCCESS;
 }
 
 
-int isis_attrib(const char *isisname, int attr, int value) {
+int isis_attrib(const char* isisname, int attr, int value) {
     char unixname[1 + PATH_MAX];
     int err;
     struct stat st;
-    mode_t mode;
+    mode_t access;
 
     if (attr < 0 || attr > 3) return ERROR_BADATTRIB;
-/* UNIX only supports the read-only attribute. */
+    /* UNIX only supports the read-only attribute. */
     if (attr != 2) return ERROR_SUCCESS;
     if (isis_isdev(isisname)) return ERROR_ISDEVICE;
     err = isis_name2unix(isisname, unixname);
 
     if (stat(unixname, &st) < 0) return ERROR_FILENOTFOUND;
 
-    mode = st.st_mode;
+    access = st.st_mode;
     if (value & 1) /* Read-only */
-        mode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
-    else	mode |= S_IWUSR;
+        access &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
+    else	access |= S_IWUSR;
 
-    if (mode == st.st_mode) return ERROR_SUCCESS;	/* Already set */
-    if (chmod(unixname, mode) == 0) return ERROR_SUCCESS;
+    if (access == st.st_mode) return ERROR_SUCCESS;	/* Already set */
+    if (chmod(unixname, access) == 0) return ERROR_SUCCESS;
     return ERROR_PERMISSIONS;
 }
 
 
 int isis_rescan(int handle) {
-    ISIS_FILE *fd;
+    ISIS_FILE* fd;
 
     fd = find_handle(handle);
 
@@ -684,7 +671,7 @@ int isis_rescan(int handle) {
 }
 
 
-int isis_whocon(int handle, char *isisname) {
+int isis_whocon(int handle, char* isisname) {
     if (handle & 1) strcpy(isisname, conin->filename);
     else		strcpy(isisname, conout->filename);
     return ERROR_SUCCESS;
@@ -693,7 +680,7 @@ int isis_whocon(int handle, char *isisname) {
 // Mark Ogden - updated spath to follow isis 4.3 behaviour
 
 struct {
-    char *dev;
+    char* dev;
     unsigned char devtype;
 } deviceMap[] = {
      {"F0", 3}, {"F1", 3}, {"F2", 3}, {"F3", 3},
@@ -705,8 +692,8 @@ struct {
      {"CO", 1}, {"F6", 3}, {"F7", 3}, {"F8", 3},
      {"F9", 3} };
 
-int isis_spath(const char *isisname, ISIS_STAT *result) {
-    const char *pathname;
+int isis_spath(const char* isisname, ISIS_STAT* result) {
+    const char* pathname;
     char devname[3];
 
     memset(result, 0, sizeof(*result));
@@ -758,25 +745,18 @@ int isis_spath(const char *isisname, ISIS_STAT *result) {
 
 
 
-ISIS_FILE *find_handle(unsigned short h) {
-    ISIS_FILE *f;
-
-    for (f = root; f != NULL; f = f->next) {
-        if (f->handle == h) {
-            return f;
-        }
-    }
-    return NULL;
+ISIS_FILE* find_handle(unsigned short h) {
+    return h < MAXHANDLE ? handles[h] : NULL;
 }
 
-const char *isis_filename(int h) {
-    ISIS_FILE *f = find_handle(h);
+const char* isis_filename(int h) {
+    ISIS_FILE* f = find_handle(h);
 
     return f ? f->filename : "[Unknown handle]";
 }
 
 
-static const char *error_strings[] =
+static const char* error_strings[] =
 {
     "Success",
     "No memory available for buffer",
@@ -819,12 +799,13 @@ static const char *error_strings[] =
 #define MAXERROR (sizeof(error_strings) / sizeof(error_strings[0]))
 
 
-void isis_perror(const char *s, int err) {
+void isis_perror(const char* s, int err) {
     fprintf(stderr, "%s: ", s);
 
     if (err >= 0 && err < MAXERROR) {
         fprintf(stderr, "%s.\n", error_strings[err]);
-    } else {
+    }
+    else {
         fprintf(stderr, "Unknown error %d.\n", err);
     }
 }

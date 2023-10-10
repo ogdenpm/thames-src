@@ -35,7 +35,7 @@ bool appError = false;
 int appType;
 enum apps {
     UNKNOWN = 0,
-    ASM80, PLM80, LIB80, LINK80, LOC80, IXREF, BASIC, ASM48
+    ASM80, PLM80, LIB80, LINK80, LOC80, IXREF, BASIC, ASM48, ASM86, PLM86
 };
 
 
@@ -53,6 +53,8 @@ static struct {
     {"ISIS-II LIBRARIAN", LIB80},
     {"ISIS-II IXREF", IXREF},
     {"ISIS-II BASIC-80", BASIC},
+    {"ISIS-II MCS-86 MACRO ASSEMBLER", ASM86},
+    {"ISIS-II PL/M-86 COMPILER", PLM86},
     {NULL, UNKNOWN}
 };
 
@@ -103,6 +105,7 @@ static struct {
     { "NOT",3 },
     { "NULL",4 },
     { "OBJECT",6 },
+    { "OUTPUT", 6},
     { "PERMISSIONS", 11},
     { "PHASE",5 },
     { "PREMATURE",9 },
@@ -178,12 +181,14 @@ static bool match(char *line) {
             }
         break;
     case PLM80:
-        if (strncmp(line, "PL/M-80 COMPILATION COMPLETE.", 29) == 0)
+    case PLM86:
+        if (strncmp(line, "PL/M-80 COMPILATION COMPLETE.", 29) == 0 || strncmp(line, "PL/M-86 COMPILATION COMPLETE.", 29) == 0)
             return strncmp(line + 34, " 0 PROGRAM ERROR", 16) != 0;
         else
             return strncmp(line, "COMPILATION TERMINATED", 22) != 0;	// PLM is well behaved so only need to look for these 2 error options
         break;
     case ASM80:
+    case ASM86:
     case ASM48:
         if (strncmp(line, "ASSEMBLY COMPLETE,", 18) == 0) {
             for (line = line + 18; *line == ' '; line++)

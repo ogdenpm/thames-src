@@ -42,7 +42,10 @@
     <ClCompile Include="extensions.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="version.c">
+    <ClCompile Include="calltrace.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="_version.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -80,12 +83,18 @@
     <ClInclude Include="extensions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="showVersion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="appinfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\thames.md" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="version.rc">
+    <ResourceCompile Include="_version.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

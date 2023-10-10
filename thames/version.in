@@ -3,6 +3,7 @@
 #define v0_2_4_3
 #define GIT_APPID       "thames"
 #define GIT_APPNAME     "thames"
+#define GIT_PORT        "(C)2012 John Elliott"
 #define GIT_VERSION     "0.2.4.X"
 #define GIT_VERSION_RC  0,2,4,3 
 #define GIT_SHA1        "untracked"

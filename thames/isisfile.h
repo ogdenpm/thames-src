@@ -21,7 +21,7 @@
  ***************************************************************************/
 
 #define ISIS_LINE_MAX 120	/* Max length of a line in line mode */
-
+#define ISIS_PATH_MAX 14		// :XX:NNNNNN.NNN
 
 /* For a line-mode file: the buffer containing the current line */
 typedef struct line_buffer
@@ -35,13 +35,18 @@ typedef struct line_buffer
 typedef struct isis_file
 {
 	struct isis_file *next;	     /* Open files are held in a linked list */
-	char filename[PATH_MAX + 1]; /* ISIS filename */
+	char filename[ISIS_PATH_MAX + 1]; /* ISIS filename */
 	unsigned short handle;	     /* ISIS file handle */
 	FILE *fp;		     /* Underlying stdio file */
 	int access;		     /* ISIS access mode: 1=R 2=W 3=RW */
 	int echo;		     /* ISIS echo file handle */
 	LINE_BUFFER *buffer;	     /* Line buffer for line-mode files */
 } ISIS_FILE;
+
+#define MAXHANDLE	19
+extern ISIS_FILE* handles[MAXHANDLE];
+#define ISISCO		0
+#define ISISCI		1
 
 /* An ISIS parsed filename */
 typedef struct isis_stat
@@ -56,11 +61,11 @@ typedef struct isis_stat
 
 /* Allocate a new line buffer of the specified size */
 LINE_BUFFER *new_buffer(int len);
-/* Free a line buffer */
-void delete_buffer(LINE_BUFFER *buf);
+
 
 /* Standard input and output, from ISIS's point of view */
-extern ISIS_FILE *conin, *conout;
+#define conin	handles[ISISCI]
+#define conout	handles[ISISCO]
 
 /* Is this filename for an ISIS device? 
  *
@@ -80,13 +85,13 @@ int isis_name2unix(const char *isisname, char *unixname);
 ISIS_FILE *find_handle(unsigned short h);
 
 /* Free memory for an ISIS file */
-void delete_isis_file(ISIS_FILE *f);
+void release_isis_handle(unsigned short h);
 
 /* Check for :CO: and :CI:, and return the console if so */
-ISIS_FILE *isis_devspecial(const char *name);
+ISIS_FILE *isis_check_console(const char *name);
 
 /* Open handle 0 (stdout) and handle 1 (stdin) */
-int isis_open_stdio(void);
+int isis_open_stdio(int handle);
 
 /* Trace aid: What name is associated with a given file handle? */
 const char *isis_filename(int handle);
@@ -97,9 +102,9 @@ int isis_close (int handle);
 int isis_delete(const char *isisname);
 int isis_read  (int handle, byte *buffer, int count, int *actual);
 int isis_write (int handle, byte *buffer, int count);
-int isis_seek  (int handle, int mode, long *offset);
+int isis_seek  (int handle, int access, long *offset);
 int isis_rename(const char *oldname, const char *newname);
-int isis_console(const char *conin, const char *conout);
+int isis_console(const char *cin, const char *cout);
 int isis_attrib(const char *isisname, int attr, int value);
 int isis_rescan(int handle);
 int isis_whocon(int handle, char *isisname);

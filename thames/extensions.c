@@ -101,34 +101,32 @@ void genDependencies(char *depFile) {
 // currently all files ending .tmp and the asm86.nam and asm86.ent files are mapped
 // a dynamic table is built up to allow for close/reopen of tmp files
 // currently deleted files are not removed but not found to be a problem
-void mapTmpFile(char *path) {
+char *mapTmpFile(char *path) {
     int i;
 
-    char *fname = getName(path);     // past any directory separators
-    if (strcmp(getExt(fname), ".tmp") && strcmp(fname, "asm86.nam") && strcmp(fname, "asm86.ent"))
-        return;
+    if (strcmp(getExt(path), ".TMP") && strcmp(path, "ASM86.NAM") && strcmp(path, "ASM86.ENT"))
+        return NULL;
 
-    for (i = 0; i < MAXTMP && tmpFiles[i].isisTmpFile && strcmp(tmpFiles[i].isisTmpFile, fname); i++)
+    for (i = 0; i < MAXTMP && tmpFiles[i].isisTmpFile && strcmp(tmpFiles[i].isisTmpFile, path); i++)
         ;
     if (i >= MAXTMP) {
         fprintf(stderr, "too many tmp files (%d) recompile thames with increased MAXTMP\n", i);
-        return;
+        return NULL;
     }
     if (!tmpFiles[i].isisTmpFile)
-        tmpFiles[i].isisTmpFile = strdup(fname);
+        tmpFiles[i].isisTmpFile = strdup(path);
     if (!tmpFiles[i].tmpFile) {
         char *tmp = tmpnam(NULL);
         if (tmp == NULL) {
-            fprintf(stderr, "failed to map temporary %s\n", fname);
-            return;
+            fprintf(stderr, "failed to map temporary %s\n", path);
+            return NULL;
         }
         tmpFiles[i].tmpFile = strdup(tmp);
     }
 #if _DEBUG
     printf("mapping %s to %s\n", path, tmpFiles[i].tmpFile);
 #endif
-    strcpy(path, tmpFiles[i].tmpFile);
-    return;
+    return tmpFiles[i].tmpFile;
 
 }
 

@@ -22,10 +22,7 @@
 
 #include "thames.h"
 #include <stdbool.h>
-
-
-
-void showVersion(FILE *fp, bool full);
+#include "showVersion.h"
 
 /* Global variables */
 
@@ -197,10 +194,8 @@ int main(int ac, char **av)
 #endif
     progname = argv[0];
 
-    if (argc == 2 && strcasecmp(argv[1], "-v") == 0) {
-        showVersion(stdout, argv[1][1] == 'V');
-        exit(0);
-    }
+    CHK_SHOW_VERSION(ac, av);
+
 
     str = getenv("ISIS_TRACE");
     if (str) trace = atoi(str);
@@ -214,7 +209,7 @@ int main(int ac, char **av)
 
 
 
-    if (isis_open_stdio())
+    if (isis_open_stdio(ISISCO) || isis_open_stdio(ISISCI))
     {
         fprintf(stderr, "%s: Could not set up ISIS console I/O\n",
             progname);
