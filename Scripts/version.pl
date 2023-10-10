@@ -87,10 +87,12 @@ sub loadDefaults {
         }
     }
     close $in;
-    $GIT_APPDIR = $defaults{GIT_APPDIR} || basename(getcwd);
+    $GIT_APPDIR = basename(getcwd);
+    $GIT_APPNAME = $defaults{GIT_APPNAME} || $GIT_APPDIR;
     if ($GIT_APPID eq "") {
         $GIT_APPID=$defaults{GIT_APPID};
-    } elsif ($GIT_APPID eq '.') {
+    }
+    if ($GIT_APPID eq '.') {
         $GIT_APPID = $APPDIR;
     }
 }
@@ -101,7 +103,7 @@ sub unix2GMT {
 
 }
 
-sub getVersionString {
+sub getVersionId {
     $GIT_BUILDTYPE = 0;
 # check for banch and any outstanding commits in current tree
     if (open my $in, "git status -s -b -uno -- . |") {
@@ -110,8 +112,8 @@ sub getVersionString {
                 $GIT_BRANCH = $1;
                 $GIT_BUILDTYPE = 1 if $GIT_BRANCH ne 'master' && $GIT_BRANCH ne 'main';
             } elsif (substr($_, 0, 2) ne "  ") {
-                $GIT_QUALIFIER = ".P";
-                $GIT_BUILDTYPE = 2;
+                $GIT_QUALIFIER = "+";
+                $GIT_BUILDTYPE = 1;
                 last;
             }
         }
@@ -123,11 +125,14 @@ sub getVersionString {
     open my $in, 'git log -1 --format="%h %ct" -- . |' or die $!;
     ($GIT_SHA1, $UNIX_CTIME) = (<$in> =~ /(\S+)\s+(\S+)/);
     close $in;
+}
+
+sub getVersionString {
     $GIT_CTIME = unix2GMT($UNIX_CTIME);
 
-    $prefix = "$GIT_APPID-" if $GIT_APPID ne "";
+    my $prefix = "$GIT_APPID-" if $GIT_APPID ne "";
     # Use git tag to get the lastest tag applicable to the contents of this directory
-    open my $in, "git tag -l $prefix[0-9]*.*[0-9] --sort=-v:refname --merged $GIT_SHA1 |" or die $!;
+    open my $in, "git tag -l $prefix\[0-9]*.*[0-9] --sort=-v:refname --merged $GIT_SHA1 |" or die $!;
     $strTAG = <$in>;
     chomp $strTAG;
     close $in;
@@ -152,13 +157,17 @@ sub checkCache {
         my $oldVer = <$in>;
         close $in;
         chomp $oldVer;
-        if ($oldVer eq "$GIT_APPID-$GIT_VERSION-$GIT_SHA1") {
-            print "Build version is assumed unchanged from $GIT_VERSION\n" unless $fQuiet;
+        if ($oldVer eq "$GIT_SHA1$GIT_QUALIFIER") {
+            if (!$fQuiet) {
+                print "Build version is assumed unchanged";
+                print " - WARNING uncommitted files" if $GIT_BUILDTYPE == 2;
+                print "\n";
+            }
             return 1;
         }
     }
     open my $out, ">", $CACHE_FILE or die $!;
-    print $out "$GIT_APPID-$GIT_VERSION-$GIT_SHA1\n";
+    print $out "$GIT_SHA1$GIT_QUALIFIER\n";
     close $out;
     return 0;
 }
@@ -173,6 +182,7 @@ sub writeOut {
             $guard =~ s/,/_/g;
             print $out "#ifndef $guard\n#define $guard\n";
             print $out "#define GIT_APPID       \"$GIT_APPID\"\n" if $GIT_APPID ne ""; 
+            print $out "#define GIT_PORT        \"$GIT_PORT\"\n" if defined($GIT_PORT);
             print $out "#define GIT_APPNAME     \"$GIT_APPNAME\"\n";  
             print $out "#define GIT_VERSION     \"$GIT_VERSION\"\n";  
             print $out "#define GIT_VERSION_RC  $GIT_VERSION_RC\n";
@@ -186,6 +196,7 @@ sub writeOut {
             $GIT_VERSION_RC =~ s/,/./g;
             print $out "namespace GitVersionInfo {\n";
             print $out "  public partial class GitVersionInfo {\n";
+            print $out "    public const string GIT_PORT       = \"$GIT_PORT\";\n" if defined($GIT_PORT);
             print $out "    public const string GIT_APPNAME    = \"$GIT_APPNAME\";\n";
             print $out "    public const string GIT_VERSION    = \"$GIT_VERSION\";\n";
             print $out "    public const string GIT_VERSION_RC = \"$GIT_VERSION_RC\";\n";
@@ -200,11 +211,13 @@ sub writeOut {
 
     }
     if (!defined($fQUIET)) {
-        print "Git App Id:           $GIT_APPID\n";
+        print "Git App Id:           $GIT_APPID";
+        print " $defaults{GIT_PORT}" if defined($defaults{GIT_PORT});
+        print "\n";
         print "Git Version:          $GIT_VERSION\n";
         print "Build type:           $GIT_BUILDTYPE\n";
         print "SHA1:                 $GIT_SHA1\n";
-        print "App Dir:              $GIT_APPDIR\n";
+        print "App Name:             $GIT_APPNAME\n";
         print "Committed:            $GIT_CTIME\n";
     }
 }
@@ -212,14 +225,14 @@ sub writeOut {
 
 main:   # main code
 if (lc($ARGV[0]) eq "-v") {
-    print basename($0), ": Rev 6 -- git 72ca9af [2020-10-12]\n";
+    print basename($0), ": 2023.4.19.12 [a8c8343]\n";
     exit(0);
 }
 if (!getOpts()) {
     usage();
 } else {
     loadDefaults();
-    getVersionString();
+    getVersionId();
     if ($GIT_SHA1 eq "") {
         if ($defaults{GIT_SHA1} eq "") {
             print "No Git information and no $DEFAULTS_FILE file\n";
@@ -232,7 +245,12 @@ if (!getOpts()) {
         $GIT_BUILDTYPE = 3;
         $GIT_BRANCH = $defaults{GIT_BRANCH};
         $GIT_CTIME = $defaults{GIT_CTIME};
+        $GIT_PORT = $default{GIT_PORT} if defined($defaults{GIT_PORT});
    } 
-    writeOut if $CACHE_FILE eq "" || !checkCache();
+   if ($CACHE_FILE eq "" || !checkCache()) {
+       getVersionString();
+       writeOut();
+   }
+   exit(0);
 }
 
