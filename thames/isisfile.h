@@ -20,6 +20,9 @@
  *                                                                         *
  ***************************************************************************/
 
+#ifndef ISIS_FILE_H
+#define ISIS_FILE_H
+
 #define ISIS_LINE_MAX 120	/* Max length of a line in line mode */
 #define ISIS_PATH_MAX 14		// :XX:NNNNNN.NNN
 
@@ -66,6 +69,9 @@ LINE_BUFFER *new_buffer(int len);
 /* Standard input and output, from ISIS's point of view */
 #define conin	handles[ISISCI]
 #define conout	handles[ISISCO]
+
+
+char * basename(char * path);
 
 /* Is this filename for an ISIS device? 
  *
@@ -154,3 +160,4 @@ void isis_perror(const char *txt, int error);
 #define ERROR_BADLOADSW	   0x22	/* Invalid nswitch argument to LOAD */
 #define ERROR_SEEKPASTEOF  0x23 /* Seek past EOF on file open for read */
 
+#endif

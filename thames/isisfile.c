@@ -21,6 +21,12 @@
  ***************************************************************************/
 
 #include "thames.h"
+#include "specialFile.h"
+#ifdef _WIN32
+#define DIRSEP "/\\"
+#else
+#define DIRSEP    "/"
+#endif
 
 static int isis_close_file(unsigned short h);
 
@@ -28,6 +34,21 @@ static int isis_close_file(unsigned short h);
 ISIS_FILE* handles[MAXHANDLE];        // max number of handles supported
 
 static char const* isis_clean_name(char const* name);
+
+
+char* basename(char* path) {
+    char* s;
+
+#ifdef _WIN32
+    if (path[0] && path[1] == ':') // skip leading device
+        path += 2;
+#endif
+    while ((s = strpbrk(path, DIRSEP))) // skip all directory components
+        path = s + 1;
+    return path;
+}
+
+
 
 /* [Mark Ogden]
     const char *xlt_device(const char *dev);
@@ -101,7 +122,7 @@ static char const* isis_clean_name(char const* name) {
 */
 
 int isis_name2unix(const char* name, char* unixname) {
-     char isisdev[5];
+    char isisdev[5];
     const char* src;
     char* dest;
     int isisNameOffset;
@@ -317,14 +338,14 @@ int  isis_open(int* handle, const char* name, int fmode, int echo) {
         *handle = isf == conout ? ISISCO : ISISCI;
         return ERROR_SUCCESS;
     }
-    char const *isisname = isis_clean_name(name);
+    char const* isisname = isis_clean_name(name);
     for (int i = 0; i < MAXHANDLE; i++) {
         if (handles[i] && strcmp(handles[i]->filename, isisname) == 0)
             return ERROR_ALREADYOPEN;
     }
     int err;
     if ((err = new_isis_handle(&isf)))
-            return err;
+        return err;
     strcpy(isf->filename, isis_clean_name(name));
     isf->access = fmode;
     isf->echo = echo;
@@ -342,17 +363,25 @@ int  isis_open(int* handle, const char* name, int fmode, int echo) {
         release_isis_handle(isf->handle);
         return err;
     }
-    addFileRef(unixname, fmode);
-    switch (fmode) {
-    case 1: isf->fp = fopen(unixname, "rb");
-        break;
-    case 2: isf->fp = fopen(unixname, "wb");
-        break;
-    case 3: isf->fp = fopen(unixname, "r+b");
-        if (!isf->fp) {
-            isf->fp = fopen(unixname, "w+b");
+    /* special handling for isis.lab and isis.dir */
+    char* fname = basename(unixname);
+    if (strcmp(fname, "isis.lab") == 0)
+        isf->fp = fmode == 1 ? mkIsisLab(isis_getdrive(name)) : NULL;
+    else if (strcmp(fname, "isis.dir") == 0)
+        isf->fp = fmode == 1 ? mkIsisDir(unixname) : NULL;
+    else {
+        addFileRef(unixname, fmode);
+        switch (fmode) {
+        case 1: isf->fp = fopen(unixname, "rb");
+            break;
+        case 2: isf->fp = fopen(unixname, "wb");
+            break;
+        case 3: isf->fp = fopen(unixname, "r+b");
+            if (!isf->fp) {
+                isf->fp = fopen(unixname, "w+b");
+            }
+            break;
         }
-        break;
     }
     if (!isf->fp) {
         if (trace)

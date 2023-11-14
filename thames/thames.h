@@ -19,7 +19,8 @@
  *    MA 02111-1307, USA                                                   *
  *                                                                         *
  ***************************************************************************/
-
+#ifndef THAMES_H
+#define THAMES_H
 #include <sys/stat.h>
 #ifndef _MSC_VER
 #include "config.h"
@@ -151,3 +152,5 @@ typedef unsigned short mode_t;
 #include "errcheck.h"
 
 #include "extensions.h"
+
+#endif

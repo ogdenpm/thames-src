@@ -48,6 +48,9 @@
     <ClCompile Include="_version.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="specialFile.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cbops.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="appinfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="specialFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
