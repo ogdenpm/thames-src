@@ -97,7 +97,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\thames.md" />
+    <None Include="..\doc\thames.md" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="_version.rc">
