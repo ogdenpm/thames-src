@@ -14,6 +14,7 @@ add_executable(thames
     thames/isis.c
     thames/isisfile.c
     thames/isisload.c
+    thames/specialFile.c
     thames/thames.c
     thames/utils.c
     thames/z80.c
@@ -26,6 +27,7 @@ add_executable(thames
     thames/isis.h
     thames/isisfile.h
     thames/isisload.h
+    thames/specialFile.h
     thames/thames.h
     thames/z80.h
     thames/z80ops.h

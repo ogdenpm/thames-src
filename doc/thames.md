@@ -12,7 +12,23 @@
 
 See [Enhancements](#Enhancements) for information on more recent changes.
 
-### Recent changes - 10-Oct-2023
+### Recent changes
+
+#### 14-Nov-2023
+
+Some limited support has been added for ISIS.LAB and ISIS.DIR, which allows PL/M 3.1 to use IXREF and for the ISIS version of IXREF to work.
+Note the ported version of IXREF is recommended rather than the ISIS version.
+
+If ISIS.LAB is opened for reading then a temporary file is created with the contents
+
+```
+THAMESFn 42
+where n is the drive number
+```
+
+If ISIS.DIR is opened for reading then a temporary file is created from contents of the specified drive/path. Only files that match an ISIS file name i.e. 6.3 alphanumeric characters are included. Additionally only the name and status byte are populated with other than zeros.
+
+#### 10-Oct-2023
 
 - The file handling has been reworked and and the emulator now correctly reports an error when trying to open an already open file. This caused problems with asm48 v2.0.
 
@@ -143,6 +159,7 @@ Additionally other programs known to work now include
 
  * asm80 versions 3.0, 3.1 & 4.1
  * asm48 versions 2.0, 3.0, 4.0, 4.2
+ * asm51 versions 2.0 & 2.1
  * plm80 versions 3.0, 3.1 - note to use XREF on these versions, a dummy ISIS.LAB file is needed.
  * lib v2.1
  * Fort80 v2.1
@@ -231,16 +248,16 @@ A small number of ISIS applications do not maintain the internal checksums, cobo
 Unfortunately ISIS does not directly support returning error codes to the invoking shell.
 Thames now supports a work around for this by inspecting the console output for error
 messages and if one is detected, thames itself will return a non-zero error code.
-Currently ASM80, LIB, LINK, LOCATE, PLM80 and IXREF are explicitly supported, however
-as many error messages are common across applications, most errors in other applications
-should also be detected.
+Currently ASM80, ASM48, ASM51, LIB, LINK, LOCATE, PLM80. IXREF, ASM86 and PLM81 are explicitly supported, however as many error messages are common across applications, most errors in other applications should also be detected.
+
+*Note if you find an undetected error or an incorrect error detection please let me know so that I can update the internal tables.*
 
 There are additionally three options that are used to modify the error processing behaviour:
 1. -u this causes UNRESOLVED (link) and UNSATISFIED (locate) errors to be ignored. The expected
    use is when creating overlays as these errors will often occur as part of the build process.
 2. -o this causes OVERLAPS (locate) to be ignored; useful when adding object files to synthesise
    the junk data present in memory when Intel create the isis.t0 files.
-   Note the obj2bin application now handles patch files and is now the preferred way of adding "Junk" data.
+   Note the abstool application handles patch files and is now the preferred way of adding "Junk" data.
 
 #### -MF file & -ME ext
 
@@ -255,4 +272,4 @@ Many ISIS applications use tmp files. Unfortunately as these file names are fixe
 __________________________________________________________________
 
 
-    Updated by Mark Ogden 10-Oct-2023
+    Updated by Mark Ogden 21-Feb-2024

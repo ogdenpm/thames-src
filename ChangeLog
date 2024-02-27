@@ -1,3 +1,64 @@
+2023-11-14 Mark Ogden
+    Added support for ISIS.LAB and ISIS.DIR
+
+2023-10-10 Mark Ogden
+    minor tweak to help
+    Updated documentation
+    Updated cmake components
+    Updated build environment
+
+2023-10-10 Mark Ogden
+    Fixed multiple open file issue and cleaned up file handling code.
+	Moved to new version model
+
+2021-05-26 Mark Ogden
+    Fixed cmake build
+
+2021-05-23 Mark Ogden
+    Put guards around malloc and mkdir to reduce warnings
+    Reformated code and moved size checks to preprocessor
+
+2021-05-22 Mark Ogden
+    Writes top of memory address to RAM location 4
+    This was needed for asxref that assumes top of memory is at location 4
+
+2020-10-21 Mark Ogden
+	Modified cmake to run the version tools and updated the thames source
+	to use the version info, bumped thames to v0.2
+
+2020-03-11 Mark Ogden
+    Fixed handling of case where no isis program is specified
+
+2020-04-25 Mark Ogden
+    Cleaned up ISIS file management to reflect more accurately the checks
+	used by ISIS
+
+2019-11-23 Mark Ogden
+    updated thames to support -ME ext option to identify object file extension
+	to allow dependencies to be generated.
+    With out -ME object file is assumed to end in .obj.
+	Note -ME is flexible if the . is missing
+
+2019-11-14: Mark Ogden
+    Added support to allow thames to be built using cmake and tools like ninja
+    Also added initial support to thames to create dependency information
+	rather than requiring makedepend.pl.
+
+2019-07-23 Mark Ogden
+    Updated spath to use ISIS II v4.3 behaviour. Also fixed incorrectly placed
+	Return result in isis_name2unix
+
+commit 5022dc6c32ab9b626879422bbdef71166f3c4b00
+2018-01-11 Mark Ogden
+    Commented out debug line in thames around detecting errors
+
+2018-12-22 Mark Ogden
+	Minor tweaks to documentation and creation of thames.pdf for those who have
+	problems viewing the *.md files
+
+2017-10-21 Mark Ogden
+    Added -i option to thames to ignore CRC errors. Needed for Cobol80
+
 2017-06-08 Mark Ogden
 	* thames-0.1.2 release
 	* modified emulation to 8080 to allow basic to work. Can be reverted
