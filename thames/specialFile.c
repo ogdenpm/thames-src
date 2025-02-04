@@ -45,7 +45,7 @@ FILE* mkIsisDir(char const* path) {
         do {
             char* s = file.name;
 
-            memset(dirEntry + 1, 0, 9);
+            memset(dirEntry, 0, 10);
 
             if (isalnum(*s)) {
                 for (int i = 1; i < 7 && isalnum(*s); i++)
