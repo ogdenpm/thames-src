@@ -226,8 +226,10 @@ void isis_wrapseek(int param) {
                paramword(param, 3), nbytei, nbyteo,
                offseti, offseto, err);
     }
-    putresult(bbyte, nbyteo);
-    putresult(block, nblocko);
+    if (access == 0) {
+        putresult(bbyte, nbyteo);
+        putresult(block, nblocko);
+    }
     putresult(status, err);
 }
 

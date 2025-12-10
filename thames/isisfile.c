@@ -553,58 +553,53 @@ int isis_write(int handle, byte* buffer, int count) {
 
 int isis_seek(int handle, int seekMode, long* offset) {
     ISIS_FILE* fd;
-    long pos;
 
+    if (seekMode < 0 || seekMode > 4)
+        return ERROR_BADMODE;
     fd = find_handle(handle);
     if (!fd) return ERROR_NOTOPEN;
 
     if (fd->access == 2) return ERROR_SEEKWRITE;
     if (isatty(fileno(fd->fp)))
         return ERROR_CANTSEEKDEV;
-    switch (seekMode) {
-    case 0:	 /* Get position */
-        pos = ftell(fd->fp);
-        /* Can't get current position */
-        if (pos < 0) return ERROR_CANTSEEKDEV;
+    long pos = ftell(fd->fp);    // where we are now
+
+    if (pos < 0)
+        return ERROR_CANTSEEKDEV;
+
+    if (seekMode == 0) {  /* Get position */
         *offset = pos;
-        break;
+        return ERROR_SUCCESS;
+    }
+    if (fd->_access == 2)
+        return ERROR_SEEKWRITE;
 
+
+    if (fseek(fd->fp, 0L, SEEK_END) < 0)
+        return ERROR_CANTSEEKDEV;
+
+    long endPos = ftell(fd->fp);
+    switch (seekMode) {
     case 1: /* Seek backward */
-        pos = ftell(fd->fp);
-        if (pos < 0) return ERROR_CANTSEEKDEV;
-        if (fd->access == 2)  return ERROR_SEEKWRITE;
-        if (pos - (*offset) < 0) {
-            /* [Mark Ogden] Seeking off beginning is an error, but nevertheless
-             * rewinds the file */
-            fseek(fd->fp, 0L, SEEK_SET);
-            return ERROR_OFFBEGINNING;
-        }
-        if (fseek(fd->fp, -(*offset), SEEK_CUR) < 0)
-            return ERROR_CANTSEEKDEV;
+        pos -= *offset;
         break;
-
-
     case 2: /* Seek absolute */
-        if (fd->access == 2) return ERROR_SEEKWRITE;
-        if (fseek(fd->fp, (*offset), SEEK_SET) < 0)
-            return ERROR_CANTSEEKDEV;
+        pos = *offset;
         break;
-
     case 3: /* Seek forward */
-        if (fd->access == 2) return ERROR_SEEKWRITE;
-        if (fseek(fd->fp, (*offset), SEEK_CUR) < 0)
-            return ERROR_CANTSEEKDEV;
+        pos += *offset;
         break;
 
     case 4:	/* Seek EOF */
-        if (fd->access == 2) return ERROR_SEEKWRITE;
-        if (fseek(fd->fp, 0, SEEK_END) < 0)
-            return ERROR_CANTSEEKDEV;
-        break;
-
-    default: return ERROR_BADMODE;
+        return ERROR_SUCCESS; // already moved to end
     }
-    return ERROR_SUCCESS;
+    if (pos < 0) {
+        rewind(fd->fp);
+        return ERROR_OFFBEGINNING;
+    }
+    if (pos > endPos)
+        return ERROR_SEEKPASTEOF;
+    return fseek(fd->fp, pos, SEEK_SET) < 0 ? ERROR_CANTSEEKDEV : ERROR_SUCCESS;
 }
 
 int isis_rename(const char* oldname, const char* newname) {
